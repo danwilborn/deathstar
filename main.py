@@ -55,10 +55,30 @@ class Enemy(pygame.sprite.Sprite):
 		self.original = self.image
 		self.rect.centerx = 640
 		self.rect.centery = 480
-		self.hitpoints = 50	
+		self.hitpoints = 2000
+		self.count = 0	
 
-	def tick(self):
-		pass
+	def change_image(self):
+		self.image = pygame.image.load("/home/scratch/paradigms/deathstar/globe_red100.png")
+		self.rect = self.image.get_rect()
+		self.rect.centerx = 640
+		self.rect.centery = 480
+
+	def explosion(self):
+		self.image = pygame.image.load("/home/scratch/paradigms/deathstar/explosion/frames000a.png")
+		self.rect = self.image.get_rect()
+		self.rect.centerx = 640
+		self.rect.centery = 480
+
+	def tick(self, laser):
+		r = pygame.Rect(self.gs.enemy.image.get_rect())
+		if r.collidelist(laser):
+			self.hitpoints -= 5
+		if self.hitpoints < 1500 and self.hitpoints > 750:
+			self.change_image()
+		if self.hitpoints < 0:
+			self.explosion()
+		
 
 class Laser(pygame.sprite.Sprite):
 
@@ -69,26 +89,27 @@ class Laser(pygame.sprite.Sprite):
 		self.original = self.image
 		self.list_of_lasers = list()
 		self.angle = 0
-		startX = self.gs.player.rect.centerx
-		startY = self.gs.player.rect.centery
+		self.startX = self.gs.player.rect.centerx
+		self.startY = self.gs.player.rect.centery
 
 	def create(self):
 
 		for i in range(5):	
 			image = self.image
 			rect = image.get_rect()
-			rect.centerx = self.gs.player.rect.centerx
-			rect.centery = self.gs.player.rect.centery
+			rect.centerx = self.startX
+			rect.centery = self.startY
 	
 			mousePos = pygame.mouse.get_pos()
 		
-			xVal = mousePos[0] - self.gs.player.rect.centerx
-			yVal = mousePos[1] - self.gs.player.rect.centery
+			xVal = mousePos[0] - self.startX
+			yVal = mousePos[1] - self.startY
 
 			rads = atan2(xVal, yVal)
-			rads %= 2*pi
-			self.angle = degrees(rads)
+			self.angle = rads
 			self.list_of_lasers.append(rect)
+			self.startX -= math.sin(self.angle)*5
+			self.startY -= math.cos(self.angle)*5
 	
 	def move(self):
 		
@@ -110,7 +131,7 @@ class GameSpace(object):
 		self.player = Player(self)
 		self.enemy = Enemy(self)
 		self.clock = pygame.time.Clock()
-		laser_array = list()	
+		self.laser_array = list()	
 
 		running = True
 		while running:
@@ -121,17 +142,17 @@ class GameSpace(object):
 				elif event.type == pygame.MOUSEBUTTONDOWN:
 					laser = Laser(self)
 					laser.create()
-					laser_array.append(laser)
+					self.laser_array.append(laser)
 				elif event.type == pygame.QUIT:
 					running = False
 				self.player.tick()
-				self.enemy.tick()
 				self.clock.tick()
-			for laser in laser_array:
+			for laser in self.laser_array:
 				laser.tick()
-			
+				self.enemy.tick(laser.list_of_lasers)
+
 			self.screen.fill(self.black)
-			for laser in laser_array:
+			for laser in self.laser_array:
 				for rect in laser.list_of_lasers:
 					self.screen.blit(laser.original, rect)
 			self.screen.blit(self.enemy.image, self.enemy.rect)
